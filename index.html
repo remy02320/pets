@@ -42,8 +42,9 @@
         <p class="footer-text">Sécurisé par QrSafe</p>
     </div>
 
+    // Remplace toute la partie <script> par celle-ci :
+
     <script>
-        // Ta configuration Firebase injectée
         const firebaseConfig = {
             apiKey: "AIzaSyA_xkC72EPWgilaWOnE132xjAmlWW5NcO8",
             authDomain: "qrsafe-v2.firebaseapp.com",
@@ -56,7 +57,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Récupération de l'ID (?id=...)
         const urlParams = new URLSearchParams(window.location.search);
         const petId = urlParams.get('id');
 
@@ -65,32 +65,36 @@
                 if (!querySnapshot.empty) {
                     let petData = querySnapshot.docs[0].data();
                     
+                    // On prépare l'affichage des infos d'urgence si elles existent
+                    let urgenceHtml = petData.infosUrgent ? 
+                        `<p style="color:red; font-weight:bold; border:2px solid red; padding:10px; border-radius:10px;">
+                            ⚠️ URGENCE : ${petData.infosUrgent}
+                         </p>` : '';
+
                     document.getElementById('content').innerHTML = `
-                        <h1>J'appartiens à ${petData.ownerName || 'mon maître'}</h1>
-                        <p class="pet-name">${petData.name}</p>
-                        <p class="info-text">📍 Habite à : <strong>${petData.city || 'sa ville'}</strong></p>
-                        
-                        <a href="tel:${petData.phone}" class="btn btn-call">
+                        <h1>J'appartiens à mon maître</h1>
+                        <p class="pet-name">${petData.nom}</p>
+                        <p class="info-text">
+                            <strong>${petData.type} - ${petData.race}</strong><br>
+                            📍 Habite à : <strong>${petData.ville}</strong>
+                        </p>
+
+                        ${urgenceHtml}
+
+                        <a href="tel:${petData.telephone}" class="btn btn-call">
                             <span class="icon">📞</span> Appeler
                         </a>
 
-                        <a href="sms:${petData.phone}?body=Bonjour, j'ai trouvé votre animal ${petData.name} grâce à sa médaille QrSafe !" class="btn btn-sms">
+                        <a href="sms:${petData.telephone}?body=Bonjour, j'ai trouvé votre chien ${petData.nom} !" class="btn btn-sms">
                             <span class="icon">💬</span> Envoyer un SMS
                         </a>
                     `;
                 } else {
-                    document.getElementById('content').innerHTML = `
-                        <p style="color: #d63031; font-weight: bold;">MÉDAILLE NON ACTIVÉE</p>
-                        <p>Cette médaille n'est pas encore reliée à un animal.</p>
-                    `;
+                    document.getElementById('content').innerHTML = "<p>Médaille non reconnue.</p>";
                 }
-            }).catch((error) => {
-                console.error("Erreur Firestore:", error);
-                document.getElementById('content').innerHTML = "<p>Erreur de connexion aux données.</p>";
             });
-        } else {
-            document.getElementById('content').innerHTML = "<p>Scannez un QR Code valide.</p>";
         }
     </script>
 </body>
 </html>
+
