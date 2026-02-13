@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Pets - Identification</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // REMPLACE PAR TES INFOS DE TON PROJET QRSAFE-V2
+        const firebaseConfig = {
+  apiKey: "AIzaSyA_xkC72EPWgilaWOnE132xjAmlWW5NcO8",
+  authDomain: "qrsafe-v2.firebaseapp.com",
+  projectId: "qrsafe-v2",
+  storageBucket: "qrsafe-v2.firebasestorage.app",
+  messagingSenderId: "820028311316",
+  appId: "1:820028311316:web:473cb45b919060c6d72401"
+};
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function loadPet() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const qrId = urlParams.get('id'); // On récupère ?id=XXXX
+
+            if (!qrId) {
+                document.getElementById('loader').innerText = "Médaille invalide.";
+                return;
+            }
+
+            const q = query(collection(db, "pets"), where("qrId", "==", qrId));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                const pet = querySnapshot.docs[0].data();
+                document.getElementById('pet-name').innerText = pet.nom;
+                document.getElementById('pet-info').innerText = `${pet.type} • ${pet.race} (${pet.ville})`;
+                document.getElementById('pet-urgent').innerText = pet.infosUrgent || "Aucune information médicale particulière.";
+                document.getElementById('btn-call').href = `tel:${pet.telephone}`;
+                if(pet.photoUri) document.getElementById('pet-img').src = pet.photoUri;
+                
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('card').classList.remove('hidden');
+            } else {
+                document.getElementById('loader').innerText = "Cet animal n'est pas répertorié ou la médaille est désactivée.";
+            }
+        }
+        loadPet();
+    </script>
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4 font-sans">
+    <div id="loader" class="text-slate-400 font-medium">Recherche de l'animal...</div>
+
+    <div id="card" class="hidden bg-white rounded-[2rem] shadow-2xl overflow-hidden max-w-sm w-full text-center border border-slate-200">
+        <div class="bg-[#0E3A5D] p-8">
+            <div class="relative inline-block">
+                <img id="pet-img" src="https://via.placeholder.com/150" class="w-28 h-28 rounded-full border-4 border-white mx-auto object-cover shadow-lg">
+                <div class="absolute bottom-0 right-0 bg-green-500 w-6 h-6 rounded-full border-2 border-white"></div>
+            </div>
+            <h1 id="pet-name" class="text-white text-3xl font-bold mt-4 tracking-tight">Nom</h1>
+            <p id="pet-info" class="text-blue-100 text-sm font-medium opacity-90 mt-1 uppercase tracking-wider">Race • Ville</p>
+        </div>
+        <div class="p-8">
+            <div class="bg-orange-50 p-5 rounded-2xl border border-orange-100 mb-8">
+                <h3 class="text-orange-700 font-bold text-xs uppercase tracking-widest mb-2">⚠ Infos d'urgence</h3>
+                <p id="pet-urgent" class="text-slate-700 text-sm leading-relaxed">...</p>
+            </div>
+            <a id="btn-call" href="#" class="bg-green-600 text-white block py-5 rounded-2xl font-bold text-xl shadow-[0_10px_20px_rgba(22,163,74,0.3)] hover:scale-[1.02] active:scale-95 transition-all">
+                📞 Appeler le maître
+            </a>
+            <p class="text-slate-400 text-[10px] mt-6 uppercase font-bold tracking-tighter">Propulsé par QrSafe Identification</p>
+        </div>
+    </div>
+</body>
+</html>
