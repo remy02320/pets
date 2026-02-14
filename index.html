@@ -7,23 +7,25 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; text-align: center; padding: 20px; background-color: #f0f2f5; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 350px; margin: 20px auto; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 20px; background-color: #f0f2f5; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 350px; margin: 20px auto; border-top: 8px solid #ff9800; }
         .logo { width: 140px; margin-bottom: 15px; }
-        h1 { color: #2d3436; font-size: 1.4em; margin-bottom: 5px; }
-        .pet-name { color: #ff9800; font-weight: bold; font-size: 2em; margin: 10px 0; text-transform: uppercase; }
-        .info-text { color: #636e72; margin-bottom: 30px; font-size: 1.1em; }
-        .btn { display: flex; align-items: center; justify-content: center; padding: 16px; text-decoration: none; border-radius: 15px; font-weight: bold; margin-bottom: 15px; color: white; font-size: 1.1em; }
+        h1 { color: #2d3436; font-size: 1.3em; margin-bottom: 5px; }
+        .pet-name { color: #ff9800; font-weight: bold; font-size: 2.2em; margin: 10px 0; text-transform: uppercase; letter-spacing: 1px; }
+        .info-text { color: #636e72; margin-bottom: 25px; font-size: 1.1em; line-height: 1.5; }
+        .btn { display: flex; align-items: center; justify-content: center; padding: 16px; text-decoration: none; border-radius: 15px; font-weight: bold; margin-bottom: 15px; color: white; font-size: 1.1em; transition: transform 0.2s; }
+        .btn:active { transform: scale(0.95); }
         .btn-sms { background-color: #ff9800; }
         .btn-call { background-color: #00b894; }
         .icon { margin-right: 12px; font-size: 1.3em; }
         .footer-text { font-size: 0.8em; color: #b2bec3; margin-top: 20px; }
+        .error { color: #d63031; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="card">
         <img src="logo.png" alt="QrSafe Logo" class="logo">
-        <div id="content"><p>Chargement des informations...</p></div>
+        <div id="content"><p>Recherche de l'animal...</p></div>
         <p class="footer-text">Sécurisé par QrSafe</p>
     </div>
 
@@ -39,36 +41,39 @@
         
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        
         const urlParams = new URLSearchParams(window.location.search);
-        const petId = urlParams.get('id');
+        const qrIdFromUrl = urlParams.get('id');
 
-        if (petId) {
-            db.collection("pets").where("qrId", "==", petId).get().then((querySnapshot) => {
+        if (qrIdFromUrl) {
+            // MODIFICATION MAJEURE : On utilise "collectionGroup" pour chercher dans TOUS les dossiers "QrPets"
+            // de tous les utilisateurs en même temps.
+            db.collectionGroup("QrPets").where("qrIds", "array-contains", qrIdFromUrl).get().then((querySnapshot) => {
                 if (!querySnapshot.empty) {
                     let petData = querySnapshot.docs[0].data();
-                    let urgenceHtml = petData.infosUrgent ? `<p style="color:red; font-weight:bold; border:2px solid red; padding:10px; border-radius:10px;">⚠️ URGENCE : ${petData.infosUrgent}</p>` : '';
+                    let urgenceHtml = petData.infosUrgent ? `<div style="background:#fff3f3; color:#d63031; font-weight:bold; border:2px solid #d63031; padding:15px; border-radius:15px; margin-bottom:20px;">⚠️ URGENCE : ${petData.infosUrgent}</div>` : '';
 
                     document.getElementById('content').innerHTML = `
-                        <h1>Bonjour je m'appelle:</h1>
+                        <h1>Bonjour, je m'appelle :</h1>
                         <p class="pet-name">${petData.nom}</p>
                         <p class="info-text">
                             <strong>${petData.type} - ${petData.race}</strong><br>
                             📍 Habite à : <strong>${petData.ville}</strong>
                         </p>
                         ${urgenceHtml}
-                        <a href="tel:${petData.telephone}" class="btn btn-call"><span class="icon">📞</span> Appeler</a>
-                        <a href="sms:${petData.telephone}?body=Bonjour, j'ai trouvé votre chien ${petData.nom} !" class="btn btn-sms"><span class="icon">💬</span> Envoyer un SMS</a>
+                        <a href="tel:${petData.telephone}" class="btn btn-call"><span class="icon">📞</span> Appeler le propriétaire</a>
+                        <a href="sms:${petData.telephone}?body=Bonjour, j'ai trouvé votre animal ${petData.nom} !" class="btn btn-sms"><span class="icon">💬</span> Envoyer un SMS</a>
                     `;
                 } else {
-                    document.getElementById('content').innerHTML = "<p>Médaille non reconnue.</p>";
+                    document.getElementById('content').innerHTML = "<p class='error'>Médaille non reconnue ou désactivée.</p>";
                 }
-            }).catch(() => {
-                document.getElementById('content').innerHTML = "<p>Erreur de chargement.</p>";
+            }).catch((error) => {
+                console.error("Erreur Firestore:", error);
+                document.getElementById('content').innerHTML = "<p class='error'>Erreur de connexion aux services QrSafe.</p>";
             });
         } else {
-            document.getElementById('content').innerHTML = "<p>Scannez un QR Code.</p>";
+            document.getElementById('content').innerHTML = "<h1>Bienvenue sur QrSafe</h1><p>Veuillez scanner un code QR pour voir les informations.</p>";
         }
     </script>
 </body>
 </html>
-
